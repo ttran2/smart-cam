@@ -161,3 +161,6 @@ cython_debug/
 
 # Mac stuff
 .DS_Store
+
+# Ignoring YOLO over 100mb model
+dashboard-app/models/yolov8x.pt
