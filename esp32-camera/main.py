@@ -3,12 +3,13 @@ import socket
 import time
 import _thread
 import struct
+import binascii
 
 import camera
 import network
-import binascii
 
 from machine import Pin, PWM, reset
+from servo import Servo
 
 
 SSID = "Tony's ESP32 Cam"
@@ -24,9 +25,8 @@ def flash():
 flash()
 
 # initialize the camera
-#camera.init(0, format=camera.JPEG)
-#camera.framesize(camera.FRAME_SVGA)
 for i in range(5):
+    camera.deinit()
     cam = camera.init()
     print("Camera ready: ", cam)
     if cam:
@@ -46,13 +46,11 @@ print('SSID: ', SSID)
 print('IP address: ', ap.ifconfig()[0])
 
 # setup servos
-#pan_servo = PWM(Pin(14), freq=50)
-#tilt_servo = PWM(Pin(15), freq=50)
+pan_servo = Servo(15)
+tilt_servo = Servo(14)
+pan_servo.write(90)
+tilt_servo.write(90)
 
-
-def pretty_addr(addr):
-    ip, port = addr
-    return ip + ":" + str(port)
 
 def unmask_payload(mask, payload):
     return bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
@@ -106,7 +104,7 @@ def send_websocket_message(client, message):
 
 
 def handle_websocket(client, addr):
-    print("Websocket established with " + pretty_addr(addr))
+    print("Websocket established with " + str(addr))
     while True:
         try:
             data = client.recv(1024)
@@ -163,8 +161,10 @@ def handle_websocket(client, addr):
                     msg = "ERROR: Unknown Camera Frame Size - " + frame_type
 
             elif cmd == "MOVE" and arg_count == 2:
-                msg = "ERROR: not implemented yet"
-
+                pan_value = int(parsed[1])
+                tilt_value = int(parsed[2])
+                pan_servo.write(pan_value)
+                tilt_servo.write(tilt_value)
             else:
                 msg = "ERROR: Unknown Command - " + cmd + " (with " + str(arg_count) + " arguments)"
             send_websocket_message(client, msg)
@@ -180,7 +180,7 @@ def base64_encode(data):
 
 
 def handle_request(client, addr):
-    print("New request from " + pretty_addr(addr))
+    print("New request from " + str(addr))
     try:
         request = client.recv(1024)
         request = request.decode('utf-8')
@@ -212,9 +212,9 @@ def handle_request(client, addr):
         if e.args[0] == 104:
             print("Connection reset by peer")
         else:
-            print("Unexpected OSError:" + e)
+            print("Unexpected OSError:" + str(e))
     except UnicodeError as e:
-        print("Unicode Error: " + e)
+        print("Unicode Error: " + str(e))
     client.close()
 
 
@@ -225,7 +225,7 @@ s.bind(addr)
 s.listen(5)
 print('Listening for connections on', addr)
 flash()
+
 while True:
     client, addr = s.accept()
-    # handle_request(client, addr)
     _thread.start_new_thread(handle_request, (client, addr))
