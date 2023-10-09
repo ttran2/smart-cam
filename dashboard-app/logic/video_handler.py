@@ -115,7 +115,11 @@ class VideoHandler:
 
         ret, frame = self.video_capture.read()
 
-        frame = cv2.resize(frame, (800, 600), interpolation=cv2.INTER_LINEAR)  # TODO: temporarily make webcam smaller
+        if ret is False or frame is None:
+            return
+
+        if self.video_source_ip == 0:  # TODO: remove this temporary code to make webcam smaller
+            frame = cv2.resize(frame, (800, 600), interpolation=cv2.INTER_LINEAR)
 
         frame_height, frame_width, frame_channels = frame.shape
         if self.cam_controller.width != frame_width or self.cam_controller.height != frame_height:

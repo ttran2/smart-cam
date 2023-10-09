@@ -1,3 +1,4 @@
+import threading
 from typing import Optional
 
 from common import FrameSize, LoggerInterface
@@ -11,6 +12,8 @@ class Esp32Bridge:
         self.logger_class = logger_class
         self.log_servo_commands = False
         self.test_mode = False
+        self.servo_lock = threading.Lock()  # indicates that we are currently moving the servo
+        self.queued_servo_duty: Optional[tuple[int, int]] = None
 
     def connect(self, ip_address: str) -> bool:
         if ip_address == "0":
@@ -54,12 +57,22 @@ class Esp32Bridge:
 
     def move_by_pixel(self, x: int, y: int) -> bool:
         if x == 0 and y == 0:
-            return
-        # self._send_command(f"MOVE {} {}")
+            return False
         # TODO: calculate pixel distance to servo duty
         # TODO: send servo duty with move_servo method
 
-    def move_servo(self, pan_servo_duty: int, tilt_servo_duty: int) -> bool:
-        if pan_servo_duty == 0 and tilt_servo_duty == 0:
-            return
-        # TODO: send MOVE command to move the servo
+    def move_servo(self, pan_degree: int, tilt_degree: int) -> bool:
+        servo_lock_acquired = self.servo_lock.acquire(blocking=False)
+        if servo_lock_acquired is not True:
+            self.queued_servo_duty = (pan_degree, tilt_degree)  # queue up the pan & tilt command
+            return False
+        while True:
+            response = self._send_command(f"MOVE {pan_degree} {tilt_degree}")
+            if response != "success":
+                self.servo_lock.release()
+                return False
+            if self.queued_servo_duty is None:
+                self.servo_lock.release()
+                return True
+            pan_degree, tilt_degree = self.queued_servo_duty
+            self.queued_servo_duty = None

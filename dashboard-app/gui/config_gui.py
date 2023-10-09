@@ -12,7 +12,7 @@ class ConfigGui(ft.UserControl):
         self.esp32_bridge = self.video_handler.esp32_bridge
 
         self.ip_textfield = ft.TextField(label="IP Address", prefix_text="https:// ", suffix_text="/camera",
-                                         on_submit=self.submit_ip_address)
+                                         value="192.168.4.1", on_submit=self.submit_ip_address)
         self.connect_button = ft.ElevatedButton("connect", icon=ft.icons.VIDEOCAM_OUTLINED,
                                                 on_click=self.submit_ip_address)
         self.flash_switch = ft.Switch(label="camera flash", value=False, on_change=self.toggle_flash)
@@ -45,8 +45,8 @@ class ConfigGui(ft.UserControl):
         )
         self.auto_pan_switch = ft.Switch(label="auto-panning", value=False, on_change=self.toggle_auto_pan)
         self.auto_tilt_switch = ft.Switch(label="auto-tilting", value=False, on_change=self.toggle_auto_tilt)
-        self.pan_slider = ft.Slider(min=0, max=100, label="{value}", on_change=self.sliding_pan_servo)
-        self.tilt_slider = ft.Slider(min=0, max=100, label="{value}", on_change=self.sliding_tilt_servo)
+        self.pan_slider = ft.Slider(min=0, max=180, divisions=180, label="{value}", value=90, on_change=self.move_servo)
+        self.tilt_slider = ft.Slider(min=0, max=180, divisions=180, label="{value}", value=90, on_change=self.move_servo)
         self.servo_config_card = ft.Card(
             scale=2,
             opacity=0,
@@ -96,7 +96,9 @@ class ConfigGui(ft.UserControl):
                 message="Please provide the IP address of the SMART Cam device."
             )
             return
+        self.connect_button.disabled = self.ip_textfield.disabled = True
         connection_established = self.video_handler.set_video_input(source=ip_address)
+        self.connect_button.disabled = self.ip_textfield.disabled = False
         if connection_established is False:
             self._error_popup(
                 title="Connection Failed",
@@ -134,13 +136,11 @@ class ConfigGui(ft.UserControl):
             self.tilt_slider.disabled = self.auto_tilt_switch.value
             self.update()
 
-    def sliding_pan_servo(self, event: ft.ControlEvent):
-        # TODO: implement manual slider (adjust division, max, and label of slider)
-        pass
-
-    def sliding_tilt_servo(self, event: ft.ControlEvent):
-        # TODO: implement manual slider (adjust division, max, and label of slider)
-        pass
+    def move_servo(self, event: ft.ControlEvent):
+        self.esp32_bridge.move_servo(
+            pan_degree=int(self.pan_slider.value),
+            tilt_degree=int(self.tilt_slider.value)
+        )
 
     def build(self):
         return ft.Column([

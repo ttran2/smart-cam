@@ -68,8 +68,7 @@ class SocketHandler:
         if self.logger_class is not None:
             self.logger_class.log(message=msg, fg_color="orange")
 
-    def on_message(self, ws: websocket.WebSocketApp, message):
-        print(f"Receive websocket message ({type(message)}): {message}")  # TODO: remove this debug print
+    def on_message(self, ws: websocket.WebSocketApp, message: str):
         self.response_queue.put(message)
 
     def on_error(self, ws: websocket.WebSocketApp, exception: websocket.WebSocketException):
