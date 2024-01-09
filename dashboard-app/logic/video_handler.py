@@ -139,3 +139,7 @@ class VideoHandler:
     def determine_frame_size(self) -> Optional[FrameSize]:
         width, height = self.get_frame_size()
         return FrameSize.determine_by(width=width, height=height)
+
+    def set_frame_size(self, frame_size: FrameSize) -> None:
+        self.set_video_input(self.video_source_ip)
+        self.cam_controller.resize(width=frame_size.width, height=frame_size.height)

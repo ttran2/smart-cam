@@ -10,6 +10,7 @@ class ConfigGui(ft.UserControl):
         super().__init__()
         self.video_handler = video_handler
         self.esp32_bridge = self.video_handler.esp32_bridge
+        self.esp32_bridge.move_servo_callback = self.update_slider
 
         self.ip_textfield = ft.TextField(label="IP Address", prefix_text="https:// ", suffix_text="/camera",
                                          value="192.168.4.1", on_submit=self.submit_ip_address)
@@ -45,8 +46,11 @@ class ConfigGui(ft.UserControl):
         )
         self.auto_pan_switch = ft.Switch(label="auto-panning", value=False, on_change=self.toggle_auto_pan)
         self.auto_tilt_switch = ft.Switch(label="auto-tilting", value=False, on_change=self.toggle_auto_tilt)
-        self.pan_slider = ft.Slider(min=0, max=180, divisions=180, label="{value}", value=90, on_change=self.move_servo)
-        self.tilt_slider = ft.Slider(min=0, max=180, divisions=180, label="{value}", value=90, on_change=self.move_servo)
+        pan_value, tilt_value = self.esp32_bridge.servo_degree
+        self.pan_slider = ft.Slider(min=0, max=180, divisions=180, label="{value}", value=pan_value,
+                                    on_change=self.pan_servo)
+        self.tilt_slider = ft.Slider(min=0, max=180, divisions=180, label="{value}", value=tilt_value,
+                                     on_change=self.tilt_servo)
         self.servo_config_card = ft.Card(
             scale=2,
             opacity=0,
@@ -114,10 +118,19 @@ class ConfigGui(ft.UserControl):
                         "Make sure the SMART Cam firmware is up-to-date."
             )
             return
-        self.resolution_dropdown.value = self.video_handler.determine_frame_size()
+        self.resolution_dropdown.value = self.esp32_bridge.frame_size = self.video_handler.determine_frame_size()
         self.cam_config_card.scale = self.cam_config_card.opacity = 1
         self.servo_config_card.scale = self.servo_config_card.opacity = 1
         self.update()
+
+    def update_slider(self):
+        pan_value, tilt_value = self.esp32_bridge.servo_degree
+        if self.pan_slider.disabled is True:
+            self.pan_slider.value = pan_value
+            self.pan_slider.update()
+        if self.tilt_slider.disabled is True:
+            self.tilt_slider.value = tilt_value
+            self.tilt_slider.update()
 
     def toggle_flash(self, event: ft.ControlEvent):
         self.esp32_bridge.set_flash(state=self.flash_switch.value)
@@ -125,22 +138,25 @@ class ConfigGui(ft.UserControl):
     def select_resolution(self, event: ft.ControlEvent):
         frame_size = FrameSize[self.resolution_dropdown.value]
         self.esp32_bridge.set_frame_size(frame_size=frame_size)
+        self.video_handler.set_frame_size(frame_size=frame_size)
 
     def toggle_auto_pan(self, event: ft.ControlEvent):
         if self.pan_slider.disabled != self.auto_pan_switch.value:
             self.pan_slider.disabled = self.auto_pan_switch.value
             self.update()
+        self.esp32_bridge.auto_pan = self.auto_pan_switch.value
 
     def toggle_auto_tilt(self, event: ft.ControlEvent):
         if self.tilt_slider.disabled != self.auto_tilt_switch.value:
             self.tilt_slider.disabled = self.auto_tilt_switch.value
             self.update()
+        self.esp32_bridge.auto_tilt = self.auto_tilt_switch.value
 
-    def move_servo(self, event: ft.ControlEvent):
-        self.esp32_bridge.move_servo(
-            pan_degree=int(self.pan_slider.value),
-            tilt_degree=int(self.tilt_slider.value)
-        )
+    def pan_servo(self, event: ft.ControlEvent):
+        self.esp32_bridge.move_servo(pan_degree=self.pan_slider.value, tilt_degree=None)
+
+    def tilt_servo(self, event: ft.ControlEvent):
+        self.esp32_bridge.move_servo(pan_degree=None, tilt_degree=self.tilt_slider.value)
 
     def build(self):
         return ft.Column([

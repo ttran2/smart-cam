@@ -60,10 +60,10 @@ class SocketHandler:
         if self.logger_class is not None:
             self.logger_class.log(message=msg, fg_color="green")
 
-    def on_close(self, ws: websocket.WebSocketApp):
+    def on_close(self, ws: websocket.WebSocketApp, status_code: int, message: str):
         self.ws = None
         self.connection_established = False
-        msg = f"Connection to {ws.url} has been closed."
+        msg = f"Connection to {ws.url} has been closed ({status_code}): {message}"
         print(msg)
         if self.logger_class is not None:
             self.logger_class.log(message=msg, fg_color="orange")
@@ -76,3 +76,6 @@ class SocketHandler:
         print(msg)
         if self.logger_class is not None:
             self.logger_class.log(message=msg, fg_color="red")
+
+        if isinstance(exception, websocket.WebSocketTimeoutException) or isinstance(exception, websocket.WebSocketConnectionClosedException):
+            self.on_close(ws=ws)

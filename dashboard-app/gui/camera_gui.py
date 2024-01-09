@@ -58,6 +58,7 @@ class CameraGui(ft.UserControl):
 
             self.update_fps()
             self.camera_feed_image.src_base64 = base64_frame
+            self.no_cam_container.width, self.no_cam_container.height = self.video_handler.get_frame_size()
             self.update()
 
     def initialize_theme(self, page: ft.Page):

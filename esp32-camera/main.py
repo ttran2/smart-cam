@@ -10,9 +10,10 @@ import network
 
 from machine import Pin, PWM, reset
 from servo import Servo
+# from smooth_servo import SmoothServo
 
 
-SSID = "Tony's ESP32 Cam"
+SSID = "SmartCam"
 PASSWORD = "securepassword"
 
 
@@ -46,10 +47,14 @@ print('SSID: ', SSID)
 print('IP address: ', ap.ifconfig()[0])
 
 # setup servos
-pan_servo = Servo(15)
-tilt_servo = Servo(14)
+pan_servo = Servo(14)
+tilt_servo = Servo(15)
 pan_servo.write(90)
 tilt_servo.write(90)
+# pan_smooth_servo = SmoothServo(pan_servo)
+# tilt_smooth_servo = SmoothServo(tilt_servo)
+# _thread.start_new_thread(pan_smooth_servo.run, ())
+# _thread.start_new_thread(tilt_smooth_servo.run, ())
 
 
 def unmask_payload(mask, payload):
@@ -136,35 +141,20 @@ def handle_websocket(client, addr):
                     msg = "ERROR: Unknown Flash argument - " + flash_toggle
 
             elif cmd == "FRAMESIZE" and arg_count == 1:
-                frame_type = parsed[1].lower()
-                if frame_type == "hd":  # (1280 x 720)
-                    camera.framesize(12)
-                elif frame_type == "fhd":  # (1920 x 1080)
-                    camera.framesize(15)
-                elif frame_type == "hqvga":  # (240 x 160)
-                    camera.framesize(camera.FRAME_HQVGA)  # TODO: fix this
-                elif frame_type == "qvga":  # (320 x 240)
-                    camera.framesize(6)
-                elif frame_type == "hvga":  # (480 x 320)
-                    camera.framesize(8)
-                elif frame_type == "vga":  # (640 x 480)
-                    camera.framesize(9)
-                elif frame_type == "svga":  # (800 x 600)
-                    camera.framesize(10)
-                elif frame_type == "xga":  # (1024 x 768)
-                    camera.framesize(11)
-                elif frame_type == "sxga":  # (1280 x 1024)
-                    camera.framesize(13)
-                elif frame_type == "uxga":  # (1600 x 1200)
-                    camera.framesize(14)
+                # https://github.com/shariltumin/esp32-cam-micropython-2022/blob/main/firmwares-20230717/Note.md
+                frame_size_key = int(parsed[1])
+                if 1 <= frame_size_key <= 18:
+                    camera.framesize(frame_size_key)
                 else:
-                    msg = "ERROR: Unknown Camera Frame Size - " + frame_type
+                    msg = "ERROR: Unknown Camera Frame Size - " + str(frame_size_key)
 
             elif cmd == "MOVE" and arg_count == 2:
-                pan_value = int(parsed[1])
-                tilt_value = int(parsed[2])
+                pan_value = float(parsed[1])
+                tilt_value = float(parsed[2])
                 pan_servo.write(pan_value)
                 tilt_servo.write(tilt_value)
+                # pan_smooth_servo.target = pan_value
+                # tilt_smooth_servo.target = tilt_value
             else:
                 msg = "ERROR: Unknown Command - " + cmd + " (with " + str(arg_count) + " arguments)"
             send_websocket_message(client, msg)
